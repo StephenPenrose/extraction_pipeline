@@ -195,7 +195,7 @@ bam_count=$(wc -l < $OUT_DIR/bam_list.txt)
 # If not resuming from Variant, Extract, or Align, submit Coverage.sh
 if [[ "$resume_step" != "variant" && "$resume_step" != "extract" && "$resume_step" != "align" ]]; then
 	echo "Coverage started!"
-	sbatch --export=ALL --array=1-${bam_count} --mem-per-cpu=10GB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/Coverage.sh
+	sbatch --export=ALL --array=1-${bam_count} --mem-per-cpu=10GB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/coverage.sh
 
 	# Test if Coverage.sh is done
 	err_count=$(ls -1 "$OUT_DIR/Logs/coverage"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
@@ -249,7 +249,7 @@ gene_count=$(wc -l < $OUT_DIR/genes.bed)
 # If not resuming from Extract, or Align, submit Variant.sh
 if [[ "$resume_step" != "extract" && "$resume_step" != "align" ]]; then
 	echo "Variant started!"
-	sbatch --export=ALL --array=1-${gene_count} --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/Variant.sh
+	sbatch --export=ALL --array=1-${gene_count} --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/variant.sh
 
 	# Test if Variant.sh is done
 	err_count=$(ls -1 "$OUT_DIR/Logs/variant"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
@@ -266,7 +266,7 @@ fi
 # If not resuming from Align, submit Extract.sh
 if [[ "$resume_step" != "align" ]]; then
 	echo "Extract started!"
-	sbatch --export=ALL --array=1-${gene_count} --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/Extract.sh
+	sbatch --export=ALL --array=1-${gene_count} --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/extract.sh
 
 	# Test if Extract.sh is done
 	err_count=$(ls -1 "$OUT_DIR/Logs/extract"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
@@ -282,7 +282,7 @@ fi
 
 # Submit Align.sh
 echo "Align started!"
-sbatch --export=ALL --array=1-${gene_count} --mem-per-cpu=512MB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/Align.sh
+sbatch --export=ALL --array=1-${gene_count} --mem-per-cpu=512MB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/align.sh
 
 # Test if Align.sh is done
 err_count=$(ls -1 "$OUT_DIR/Logs/align"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
