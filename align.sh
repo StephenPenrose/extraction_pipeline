@@ -33,15 +33,29 @@ gene=$(echo $(sed -n "${SLURM_ARRAY_TASK_ID}p" genes.bed) | awk '{print $4}')
 outname=$(echo ${gene} "dp"${mindepth} | sed 's/ /_/g' | sed 's/:/_/g')
 
 # Get a list of fasta files for that region
-find $OUT_DIR/extract  | grep ${gene} > ${gene}_fastas.txt
+find $OUT_DIR/extract -type f -not -name "${gene}.fa" | grep ${gene} > ${gene}_fastas.txt
+
+#Copy Refrence sequence
+cp $OUT_DIR/extract/${gene}.fa ./${outname}.fa
+
+# Get new names
+ncol=$(awk -v 'FS=\t' '{print NF}' $SAMPLES | sort -nu | tail -n 1)
+if [[ "$ncol" -eq 2 ]]; then
+	cat $SAMPLES | awk '{ print $1, $2}' | sed 's/^.*\///g'| sed 's/.bam//g' > new_names.txt
+elif [[ "$ncol" -eq 3 ]]; then
+	cat $SAMPLES | awk '{ print $1, $3}' | sed 's/^.*\///g'| sed 's/.bam//g' > new_names.txt
+fi
 
 # Add fasta files together
 while read f; do
-	
-	# Output record to multi-sample fasta
-	cat ${f} >> ${outname}.fa
+
+    # Output record to multi-sample fasta
+    current_name=$(head -n 1 $f | cut -d'_' -f1 | cut -d'>' -f2)
+    new_name=$(grep "$current_name" new_names.txt | awk '{ print $2}' FS=' ')
+    cat <(echo ">${new_name}") <(tail -n +2 $f) >> ${outname}.fa
 
 done < ${gene}_fastas.txt
+
 
 # Align records with muscle v5
 muscle -align ${outname}.fa -output ${outname}_aligned.fa
@@ -65,7 +79,7 @@ if [[ ${mem_max} == ${mem_used} ]]; then
 	# Check if mem_max is the last number in the array
 	if [[ "${mem_max}" == "${mem_array[-1]}" ]]; then
 		echo "Failed with not enough memory!"
-		echo "Coverage for ${gene} failed with ${mem_max%.*}GB memory" >> $MAS_LOG
+		echo "Align for ${gene} failed with ${mem_max%.*}GB memory" >> $MAS_LOG
 		cp $0 $OUT_DIR/Logs/$SLURM_JOB_NAME.sh
 		cp $DEF_DIR/Logs/$SLURM_JOB_NAME.$SLURM_ARRAY_JOB_ID/$SLURM_JOB_NAME.$SLURM_JOB_ID.out $OUT_DIR/Logs/$SLURM_JOB_NAME
 		mv $OUT_DIR/Logs/$SLURM_JOB_NAME/$SLURM_JOB_NAME.$SLURM_JOB_ID.out "$OUT_DIR/Logs/$SLURM_JOB_NAME/${gene}.out"
@@ -90,7 +104,7 @@ else
 
 	cp ${outname}_aligned.fa $OUT_DIR/$SLURM_JOB_NAME
 	echo "Completed!"
-	echo "Coverage for ${gene} completed with ${mem_max%.*}GB memory" >> $MAS_LOG
+	echo "Align for ${gene} completed with ${mem_max%.*}GB memory" >> $MAS_LOG
 	cp $0 $OUT_DIR/Logs/$SLURM_JOB_NAME.sh
 	cp $DEF_DIR/Logs/$SLURM_JOB_NAME.$SLURM_ARRAY_JOB_ID/$SLURM_JOB_NAME.$SLURM_JOB_ID.out $OUT_DIR/Logs/$SLURM_JOB_NAME
 	mv $OUT_DIR/Logs/$SLURM_JOB_NAME/$SLURM_JOB_NAME.$SLURM_JOB_ID.out "$OUT_DIR/Logs/$SLURM_JOB_NAME/${gene}.out"
