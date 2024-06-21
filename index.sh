@@ -2,10 +2,10 @@
 
 # SLURM job options
 #SBATCH --job-name=Extraction_pipeline
-#SBATCH --mail-user=stephen.penrose@agriculture.vic.gov.au
+#SBATCH --mail-user=
 #SBATCH --mail-type=ALL
-#SBATCH --account=pathogens
-#SBATCH --partition=batch
+#SBATCH --account=
+#SBATCH --partition=
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=1GB 
@@ -178,10 +178,15 @@ if [ "$resume_step" != "New_run" ]; then
 		rm -r $OUT_DIR/${resume_step}
 		rm -r $OUT_DIR/extract
 		rm -r $OUT_DIR/align
+		rm -r $OUT_DIR/tree
 	elif [ "$resume_step" == "extract" ]; then
 		rm -r $OUT_DIR/${resume_step}
 		rm -r $OUT_DIR/align
+		rm -r $OUT_DIR/tree
 	elif [ "$resume_step" == "align" ]; then
+		rm -r $OUT_DIR/${resume_step}
+		rm -r $OUT_DIR/tree
+	elif [ "$resume_step" == "tree" ]; then
 		rm -r $OUT_DIR/${resume_step}
 	fi
 fi
@@ -192,16 +197,49 @@ fi
 cat $SAMPLES | awk '{ print $1}' | sed "s|^|$BAM_DIR\/|" | sed 's/$/.bam/' > $OUT_DIR/bam_list.txt
 bam_count=$(wc -l < $OUT_DIR/bam_list.txt)
 
-# If not resuming from Variant, Extract, or Align, submit Coverage.sh
-if [[ "$resume_step" != "variant" && "$resume_step" != "extract" && "$resume_step" != "align" ]]; then
-	echo "Coverage started!"
+# If not resuming from Variant, Extract, Align or Tree, submit Coverage.sh
+if [[ "$resume_step" != "variant" && "$resume_step" != "extract" && "$resume_step" != "align" && "$resume_step" != "tree" ]]; then
+	echo "Coverage started at $(date +%Y-%m-%d\ %H:%M:%S)!"
 	sbatch --export=ALL --array=1-${bam_count} --mem-per-cpu=10GB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/coverage.sh
 
 	# Test if Coverage.sh is done
 	err_count=$(ls -1 "$OUT_DIR/Logs/coverage"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
-	while [[ ${err_count} -ne ${bam_count} ]]; do  # Wait for the number of .err files to match the number of .bam files
-		sleep 60  # Wait for 60 seconds before checking again
+	last_count=0
+	while [[ ${err_count} -ne ${bam_count} ]]; do # Wait for the number of .err files to match the number of genes
+		sleep 60 # Wait for 60 seconds before checking again
 		err_count=$(ls -1 "$OUT_DIR/Logs/coverage"/*.err 2>/dev/null | wc -l)
+		if [[ ${err_count} -eq ${last_count} ]]; then
+			((stall_count++))
+		else
+			stall_count=0
+		fi
+		last_count=${err_count}
+		if [[ ${stall_count} -ge 60 ]]; then  # If no progress for 60 minutes
+			# Check if the current job is the only one running
+			if [[ $(squeue -h -t RUNNING | wc -l) -eq 1 ]]; then
+				echo "Current job is the only one running. Something went wrong. Resubmitting failed jobs"
+				# Obtain files that are finished
+				ls $OUT_DIR/coverage > coverage_status.txt
+
+				# Extract base names and sort them
+				awk -F'/' '{print $NF}' $OUT_DIR/bam_list.txt | awk -F'.' '{print $1}' | sort > bam_names.txt
+				awk -F'/' '{print $NF}' coverage_status.txt | awk -F'.' '{print $1}' | sort > coverage_status.txt
+
+				# Find incomplete
+				comm -23 bam_names.txt coverage_status.txt > incompleate_jobs.txt
+
+				# Convert the line numbers to a comma-separated list
+				failed_jobs=$(echo $(while read name; do grep -n "^$name$" bam_names.txt | cut -d: -f1; done < incompleate_jobs.txt) | tr ' ' ',')
+
+				# Use the list in the sbatch command
+				sbatch --export=ALL --array=${failed_jobs} --mem-per-cpu=10GB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/coverage.sh
+
+				stall_count=0  # Reset the stall count
+			else
+				echo "Jobs still running"
+				stall_count=0  # Reset the stall count
+			fi
+		fi
 	done
 	sbatch $DEF_DIR/stats.sh -d "$OUT_DIR/Logs/coverage/"
 	echo "Coverage completed!"
@@ -246,9 +284,9 @@ fi
 # Count number of genes
 gene_count=$(wc -l < $OUT_DIR/genes.bed)
 
-# If not resuming from Extract, or Align, submit Variant.sh
-if [[ "$resume_step" != "extract" && "$resume_step" != "align" ]]; then
-	echo "Variant started!"
+# If not resuming from Extract, Align or Tree, submit Variant.sh
+if [[ "$resume_step" != "extract" && "$resume_step" != "align" && "$resume_step" != "tree" ]]; then
+	echo "Variant started at $(date +%Y-%m-%d\ %H:%M:%S)!"
 	sbatch --export=ALL --array=1-${gene_count} --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/variant.sh
 
 	# Test if Variant.sh is done
@@ -263,9 +301,9 @@ fi
 
 #----------------------------------------------------------------------#
 
-# If not resuming from Align, submit Extract.sh
-if [[ "$resume_step" != "align" ]]; then
-	echo "Extract started!"
+# If not resuming from Align or Tree, submit Extract.sh
+if [[ "$resume_step" != "align" && "$resume_step" != "tree" ]]; then
+	echo "Extract started at $(date +%Y-%m-%d\ %H:%M:%S)!"
 	sbatch --export=ALL --array=1-${gene_count} --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/extract.sh
 
 	# Test if Extract.sh is done
@@ -280,17 +318,34 @@ fi
 
 #----------------------------------------------------------------------#
 
-# Submit Align.sh
-echo "Align started!"
-sbatch --export=ALL --array=1-${gene_count} --mem-per-cpu=512MB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/align.sh
+# If not resuming from Tree, submit Align.sh
+if [[ "$resume_step" != "tree" ]]; then
+	echo "Align started at $(date +%Y-%m-%d\ %H:%M:%S)!"
+	sbatch --export=ALL --array=1-${gene_count} --mem-per-cpu=512MB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/align.sh
+
+	# Test if Align.sh is done
+	err_count=$(ls -1 "$OUT_DIR/Logs/align"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
+	while [[ ${err_count} -ne ${gene_count} ]]; do  # Wait for the number of .err files to match the number of genes
+		sleep 60  # Wait for 60 seconds before checking again
+		err_count=$(ls -1 "$OUT_DIR/Logs/align"/*.err 2>/dev/null | wc -l)
+	done
+	sbatch $DEF_DIR/stats.sh -d "$OUT_DIR/Logs/align/"
+	echo "Align completed!"
+fi
+
+#----------------------------------------------------------------------#
+
+# Submit Tree.sh
+echo "Tree started at $(date +%Y-%m-%d\ %H:%M:%S)!"
+sbatch --export=ALL --array=1-${gene_count} --mem-per-cpu=1GB --output=$DEF_DIR/Logs/%x.%A/%x.%j.out --error=$DEF_DIR/Logs/%x.%A/%x.%j.err $DEF_DIR/tree.sh
 
 # Test if Align.sh is done
-err_count=$(ls -1 "$OUT_DIR/Logs/align"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
+err_count=$(ls -1 "$OUT_DIR/Logs/tree"/*.err 2>/dev/null | wc -l)  # Count the number of .err files
 while [[ ${err_count} -ne ${gene_count} ]]; do  # Wait for the number of .err files to match the number of genes
 	sleep 60  # Wait for 60 seconds before checking again
-	err_count=$(ls -1 "$OUT_DIR/Logs/align"/*.err 2>/dev/null | wc -l)
+	err_count=$(ls -1 "$OUT_DIR/Logs/tree"/*.err 2>/dev/null | wc -l)
 done
-sbatch $DEF_DIR/stats.sh -d "$OUT_DIR/Logs/align/"
+sbatch $DEF_DIR/stats.sh -d "$OUT_DIR/Logs/tree/"
 echo "Align completed!"
 
 echo "Completed!"
