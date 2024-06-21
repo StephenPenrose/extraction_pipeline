@@ -9,7 +9,7 @@ Optional number of bases to add to begining and end of gene (-p). Defaults to 10
 Optional depth of reads for a base to extract (-d). Defaults to 1  
 Optional threshold for gene coverage (-c). Defaults to 90%  
 Optional ID of previous job to contine from a previous job (-i)  
-Optional step to continue from (-r). Allowed values: 'variant', 'extract', 'align'.  
+Optional step to continue from (-r). Allowed values: 'variant', 'extract', 'align', 'tree'.  
 
 First step: Coverage  
 	Submits an array job for each .bam listed in -S.  
@@ -32,7 +32,12 @@ Second step: Variant
 Fourth step: Align  
 	Submits an array job for each gene listed in -G.  
 	Each jobs aligns the various extracted genes with a copy of the gene from the refrence sequence.  
-	It will attempt with 10 GB of RAM and if that fails, it will resubmit with addition resources up to 6 times (20 GB, 40 GB, 80 GB, 1600 GB, 320 GB, 640 GB).  
+	It will attempt with 10 GB of RAM and if that fails, it will resubmit with addition resources up to 6 times (20 GB, 40 GB, 80 GB, 160 GB, 320 GB, 640 GB).  
+
+ Fifth step: Tree
+ 	Submits an array job for each gene listed in -G.
+  	Each job makes determining the best model to use and creates a phylogenetic tree of the previous alignment.
+   	It will attempt with 20 GB of RAM and if that fails, it will resubmit with addition resources up to 5 times (40 GB, 80 GB, 160 GB, 320 GB, 640 GB).
 
 At each step, the logs of succesful runs will be copied to the output directory and a tally of stats will be generated for each array.  
 
