@@ -51,7 +51,7 @@ while read f; do
 
     # Output record to multi-sample fasta
     current_name=$(head -n 1 $f | cut -d'_' -f1 | cut -d'>' -f2)
-    new_name=$(grep "$current_name" new_names.txt | awk '{ print $2}' FS=' ')
+    new_name=$(grep -w "$current_name" new_names.txt | awk '{ print $2}' FS=' ')
     cat <(echo ">${new_name}") <(tail -n +2 $f) >> ${outname}.fa
 
 done < ${gene}_fastas.txt
