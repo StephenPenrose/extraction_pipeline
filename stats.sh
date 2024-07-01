@@ -8,8 +8,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=1GB 
 #SBATCH --time=1:00:00
-
-echo "Hello, World!"
+#SBATCH --output=/dev/null
 
 # Parse command line options
 while getopts d: option
@@ -19,6 +18,8 @@ in
 d) DIR=${OPTARG};;
 esac
 done
+
+echo "Hello, World!"
 
 # Initialize variables
 mem_avail=1000000
