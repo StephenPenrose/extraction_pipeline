@@ -2,8 +2,6 @@
 
 # SLURM job options
 #SBATCH --job-name=coverage
-#SBATCH --account=pathogens
-#SBATCH --partition=batch
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=1:00:00
