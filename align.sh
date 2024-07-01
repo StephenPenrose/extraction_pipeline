@@ -15,11 +15,6 @@ tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
 cd ${tmp_dir}
 pwd
 
-# Create output directory
-mkdir $OUT_DIR/$SLURM_JOB_NAME
-mkdir $OUT_DIR/Logs/$SLURM_JOB_NAME
-mkdir $OUT_DIR/Logs/$SLURM_JOB_NAME/Failed
-
 # Load necessary modules
 module purge
 module load BEDTools/2.30.0-GCC-11.2.0
@@ -33,7 +28,7 @@ gene=$(echo $(sed -n "${SLURM_ARRAY_TASK_ID}p" genes.bed) | awk '{print $4}')
 outname=$(echo ${gene} "dp"${mindepth} | sed 's/ /_/g' | sed 's/:/_/g')
 
 # Get a list of fasta files for that region
-find $OUT_DIR/extract -type f -not -name "${gene}.fa" | grep ${gene} > ${gene}_fastas.txt
+find $OUT_DIR/extract -type f -not -name "${gene}.fa" | grep ${gene}_ > ${gene}_fastas.txt
 
 #Copy Refrence sequence
 cp $OUT_DIR/extract/${gene}.fa ./${outname}.fa
