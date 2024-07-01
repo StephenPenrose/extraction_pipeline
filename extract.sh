@@ -16,10 +16,6 @@ tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
 cd ${tmp_dir}
 pwd
 
-# Create output directory
-mkdir $OUT_DIR/$SLURM_JOB_NAME
-mkdir $OUT_DIR/Logs/$SLURM_JOB_NAME
-
 # Load necessary modules
 module purge
 module load BCFtools/1.17-GCC-11.2.0
@@ -42,7 +38,7 @@ cp $REF_GNM ./reference.fna
 cp $REF_GNM.fai ./reference.fna.fai
 
 # Extract the target region from the reference genome to align against
-echo "$(sed -n "${SLURM_ARRAY_TASK_ID}p" genes.bed)" | awk 'BEGIN { FS=" "} {print $1 "\t" $2 "\t" $3}' > tmp.bed
+echo "$(sed -n "${SLURM_ARRAY_TASK_ID}p" genes.bed)" | awk 'BEGIN { FS=" "} {print $1 "\t" $2-1 "\t" $3}' > tmp.bed
 bedtools getfasta -fi reference.fna -bed tmp.bed > ${gene}.fa
 cp ${gene}.fa $OUT_DIR/$SLURM_JOB_NAME/${gene}.fa
 
