@@ -2,8 +2,6 @@
 
 # SLURM job options
 #SBATCH --job-name=stats
-#SBATCH --account=pathogens
-#SBATCH --partition=batch
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=1GB 
