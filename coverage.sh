@@ -16,11 +16,6 @@ tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
 cd ${tmp_dir}
 pwd
 
-# Create necessary directories
-mkdir $OUT_DIR/$SLURM_JOB_NAME
-mkdir $OUT_DIR/Logs/$SLURM_JOB_NAME
-mkdir $OUT_DIR/Logs/$SLURM_JOB_NAME/Failed
-
 # Load necessary modules	
 module purge
 module load BEDTools/2.30.0-GCC-11.2.0
