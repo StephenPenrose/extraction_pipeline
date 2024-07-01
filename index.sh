@@ -2,10 +2,6 @@
 
 # SLURM job options
 #SBATCH --job-name=Extraction_pipeline
-#SBATCH --mail-user=stephen.penrose@agriculture.vic.gov.au
-#SBATCH --mail-type=ALL
-#SBATCH --account=pathogens
-#SBATCH --partition=batch
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=1GB 
