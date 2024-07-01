@@ -6,7 +6,6 @@
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=10GB 
 #SBATCH --time=72:00:00
-#SBATCH --account=pathogens
 
 echo "Hello, World!"
 
